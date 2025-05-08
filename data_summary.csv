@@ -1,0 +1,37 @@
+Fruit,Train,Test,Test/Train
+Apple Granny Smith,451,41,9.1%
+Apricot,451,41,9.1%
+Avocado,381,46,12.1%
+Banana,441,49,11.1%
+Blueberry,411,51,12.4%
+Cactus fruit,441,49,11.1%
+Cherry,451,41,9.1%
+Corn,401,49,12.2%
+Kiwi,421,45,10.7%
+Mango,431,59,13.7%
+Orange,421,58,13.8%
+Pineapple,441,49,11.1%
+Strawberry,451,41,9.1%
+Watermelon,431,44,10.2%
+,6024,663,
+,,,
+File Properties,Train,Test,
+.jpg,6024,663,
+100x100 pixels,6024,663,
+RGB,6024,663,
+,,,
+,,,
+?on average each JPG is about 4 634 B (~4.6 KB).,,,
+,,,
+,,,
+"std (968)?—?the standard deviation is ~968 B, so most files fall within ±1 KB of the mean.",,,
+,,,
+min (2 458)?—?your smallest image is 2 458 B (~2.4 KB).,,,
+,,,
+25% (4 002)?—?25 percent of images are ?4 002 B.,,,
+,,,
+"50% (4 375)?—?the median file size is 4 375 B (half your images are smaller, half larger).",,,
+,,,
+75% (5 157)?—?75 percent of images are ?5 157 B.,,,
+,,,
+max (6 989)?—?the largest image is 6 989 B (~6.8 KB).,,,
