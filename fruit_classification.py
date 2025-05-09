@@ -1,30 +1,36 @@
-# fruit_classification.py (single-file pipeline + baseline model)
-
+# Imports
 import tensorflow as tf
 from pathlib import Path
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
 # Adjust this to your data folder
 root_dir = Path(r'C:\Users\matt\iCloudDrive\Family\Education\Matt\KBS\Modules\2025 T1\TECH3300 - Machine Learning Applications\Assessment 2\Assessment 2 Data')
 
-seed             = 42
-autotune         = tf.data.AUTOTUNE
+# Variables
+seed = 42 # For reproducibility
 
 # === Hyperparameters ===
 
 # Optimisation parameters
-learning_rate = 1e-3
-batch_size = 32
-num_epochs = 20
+learning_rate = 1e-3 # Learning rate for Adam optimiser
+batch_size = 32 # Batch size for training and validation datasets
+num_epochs = 20 # Number of epochs for training
 
 # Regularisation parameters
-dropout_rate = 0.5
+dropout_rate = 0.5 # Dropout rate for the fully connected layer
 
 # Data-Related parameters
-validation_split = 0.2
-img_size = (100, 100)
+validation_split = 0.2 # Fraction of training data to reserve for validation
+img_size = (100, 100) # Image size for resising (height, width)
 
-
+# Preprocess function
+def preprocess(ds, augment=False):
+    ds = ds.map(lambda x, y: (normalization(x), y), num_parallel_calls=tf.data.AUTOTUNE)
+    if augment:
+        ds = ds.map(lambda x, y: (data_augmentation(x), y), num_parallel_calls=tf.data.AUTOTUNE)
+    return ds.cache().prefetch(tf.data.AUTOTUNE)
 
 # 1. Create raw datasets to capture class names
 raw_train_ds = tf.keras.preprocessing.image_dataset_from_directory(
@@ -60,12 +66,6 @@ data_augmentation = tf.keras.Sequential([
     tf.keras.layers.RandomZoom(0.1),
 ])
 
-def preprocess(ds, augment=False):
-    ds = ds.map(lambda x, y: (normalization(x), y), num_parallel_calls=autotune)
-    if augment:
-        ds = ds.map(lambda x, y: (data_augmentation(x), y), num_parallel_calls=autotune)
-    return ds.cache().prefetch(autotune)
-
 # 3. Apply preprocessing
 train_ds = preprocess(raw_train_ds, augment=True)
 val_ds   = preprocess(raw_val_ds)
@@ -79,14 +79,17 @@ test_raw = tf.keras.preprocessing.image_dataset_from_directory(
     image_size=img_size,
     shuffle=False
 )
-test_ds = test_raw.map(lambda x, y: (normalization(x), y)).cache().prefetch(autotune)
+test_ds = test_raw.map(lambda x, y: (normalization(x), y)).cache().prefetch(tf.data.AUTOTUNE)
 
+# 5. Print dataset information
 print("Datasets ready:")
 print(f" • train: {tf.data.experimental.cardinality(train_ds).numpy()} batches")
 print(f" • val:   {tf.data.experimental.cardinality(val_ds).numpy()} batches")
 print(f" • test:  {tf.data.experimental.cardinality(test_ds).numpy()} batches")
 
 # === Baseline CNN Model ===
+
+# 1. Define the model
 num_classes = len(class_names)
 
 model = tf.keras.Sequential([
@@ -104,12 +107,14 @@ model = tf.keras.Sequential([
 ])
 model.summary()
 
+# 2. Compile the model
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate-3),
+    optimizer=tf.keras.optimizers.Adam(learning_rate),
     loss="categorical_crossentropy",
     metrics=["accuracy"]
 )
 
+# 3. Train the model
 callbacks = [
     tf.keras.callbacks.EarlyStopping(
         monitor="val_loss",
@@ -117,7 +122,7 @@ callbacks = [
         restore_best_weights=True
     )
 ]
-
+# 4. Save the model (after training)
 history = model.fit(
     train_ds,
     epochs=num_epochs,
@@ -125,7 +130,7 @@ history = model.fit(
     callbacks=callbacks
 )
 
-# Plot training curves
+# 5. Plot model and evaluate the model on the test dataset
 plt.figure()
 plt.plot(history.history["loss"], label="train loss")
 plt.plot(history.history["val_loss"], label="val loss")
@@ -136,7 +141,27 @@ plt.plot(history.history["accuracy"], label="train acc")
 plt.plot(history.history["val_accuracy"], label="val acc")
 plt.title("Accuracy"); plt.legend(); plt.show()
 
-# Save the trained model
-model_name = "baseline_fruit_classifier"
-model.save(model_name, save_format="keras")
-print(model_name)
+model.save("baseline_fruit_classifier.keras")
+print(model)
+
+# === Evaluate Performance ===
+
+# 6. Evaluate on the test set
+test_loss, test_acc = model.evaluate(test_ds)
+print(f"\nTest Loss:     {test_loss:.4f}")
+print(f"Test Accuracy: {test_acc:.4f}")
+
+# 7. Confusion matrix
+# Gather true labels and predictions
+y_true = np.concatenate([y.numpy() for _, y in test_ds], axis=0)
+y_pred_probs = model.predict(test_ds)
+y_pred = np.argmax(y_pred_probs, axis=1)
+y_true_labels = np.argmax(y_true, axis=1)
+
+# Plot it
+cm = confusion_matrix(y_true_labels, y_pred)
+disp = ConfusionMatrixDisplay(cm, display_labels=class_names)
+disp.plot(xticks_rotation="vertical")
+plt.title("Test Confusion Matrix")
+plt.tight_layout()
+plt.show()
