@@ -10,7 +10,6 @@ root_dir = Path(r'C:\Users\matt\iCloudDrive\Family\Education\Matt\KBS\Modules\20
 
 # Variables
 seed = 42 # For reproducibility
-
 # === Hyperparameters ===
 
 # Optimisation parameters
@@ -27,12 +26,12 @@ img_size = (100, 100) # Image size for resising (height, width)
 
 # Preprocess function
 def preprocess(ds, augment=False):
-    ds = ds.map(lambda x, y: (normalization(x), y), num_parallel_calls=tf.data.AUTOTUNE)
+    ds = ds.map(lambda x, y: (normalisation(x), y), num_parallel_calls=tf.data.AUTOTUNE)
     if augment:
         ds = ds.map(lambda x, y: (data_augmentation(x), y), num_parallel_calls=tf.data.AUTOTUNE)
     return ds.cache().prefetch(tf.data.AUTOTUNE)
 
-# 1. Create raw datasets to capture class names
+# create raw datasets to capture class names
 raw_train_ds = tf.keras.preprocessing.image_dataset_from_directory(
     root_dir / "train",
     labels="inferred",
@@ -58,19 +57,20 @@ raw_val_ds = tf.keras.preprocessing.image_dataset_from_directory(
     subset="validation"
 )
 
-# 2. Define preprocessing layers
-normalization = tf.keras.layers.Rescaling(1./255)
+# define preprocessing layers
+normalisation = tf.keras.layers.Rescaling(1./255)
+# augment data with random transformations
 data_augmentation = tf.keras.Sequential([
     tf.keras.layers.RandomFlip("horizontal"),
     tf.keras.layers.RandomRotation(0.1),
     tf.keras.layers.RandomZoom(0.1),
 ])
 
-# 3. Apply preprocessing
+# apply preprocessing
 train_ds = preprocess(raw_train_ds, augment=True)
 val_ds   = preprocess(raw_val_ds)
 
-# 4. Define and preprocess test dataset
+# define and preprocess test dataset
 test_raw = tf.keras.preprocessing.image_dataset_from_directory(
     root_dir / "test",
     labels="inferred",
@@ -79,9 +79,9 @@ test_raw = tf.keras.preprocessing.image_dataset_from_directory(
     image_size=img_size,
     shuffle=False
 )
-test_ds = test_raw.map(lambda x, y: (normalization(x), y)).cache().prefetch(tf.data.AUTOTUNE)
+test_ds = test_raw.map(lambda x, y: (normalisation(x), y)).cache().prefetch(tf.data.AUTOTUNE)
 
-# 5. Print dataset information
+# print dataset information
 print("Datasets ready:")
 print(f" • train: {tf.data.experimental.cardinality(train_ds).numpy()} batches")
 print(f" • val:   {tf.data.experimental.cardinality(val_ds).numpy()} batches")
@@ -89,17 +89,20 @@ print(f" • test:  {tf.data.experimental.cardinality(test_ds).numpy()} batches"
 
 # === Baseline CNN Model ===
 
-# 1. Define the model
+# define the model
 num_classes = len(class_names)
 
 model = tf.keras.Sequential([
+    # input layer
     tf.keras.Input(shape=img_size + (3,)),
+    # convolutional blocks
     tf.keras.layers.Conv2D(32, 3, activation="relu"),
     tf.keras.layers.MaxPooling2D(),
     tf.keras.layers.Conv2D(64, 3, activation="relu"),
     tf.keras.layers.MaxPooling2D(),
     tf.keras.layers.Conv2D(128, 3, activation="relu"),
     tf.keras.layers.MaxPooling2D(),
+    # classification head
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(128, activation="relu"),
     tf.keras.layers.Dropout(dropout_rate),
@@ -107,14 +110,14 @@ model = tf.keras.Sequential([
 ])
 model.summary()
 
-# 2. Compile the model
+# compile the model
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate),
     loss="categorical_crossentropy",
     metrics=["accuracy"]
 )
 
-# 3. Train the model
+# train the model
 callbacks = [
     tf.keras.callbacks.EarlyStopping(
         monitor="val_loss",
@@ -122,7 +125,8 @@ callbacks = [
         restore_best_weights=True
     )
 ]
-# 4. Save the model (after training)
+
+# save the model
 history = model.fit(
     train_ds,
     epochs=num_epochs,
@@ -130,7 +134,7 @@ history = model.fit(
     callbacks=callbacks
 )
 
-# 5. Plot model and evaluate the model on the test dataset
+# plot model and evaluate the model on the test dataset
 plt.figure()
 plt.plot(history.history["loss"], label="train loss")
 plt.plot(history.history["val_loss"], label="val loss")
@@ -146,12 +150,12 @@ print(model)
 
 # === Evaluate Performance ===
 
-# 6. Evaluate on the test set
+# evaluate on the test set
 test_loss, test_acc = model.evaluate(test_ds)
 print(f"\nTest Loss:     {test_loss:.4f}")
 print(f"Test Accuracy: {test_acc:.4f}")
 
-# 7. Confusion matrix
+# confusion matrix
 # Gather true labels and predictions
 y_true = np.concatenate([y.numpy() for _, y in test_ds], axis=0)
 y_pred_probs = model.predict(test_ds)
